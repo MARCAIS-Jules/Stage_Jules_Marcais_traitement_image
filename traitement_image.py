@@ -20,18 +20,13 @@ def calc_mask(image,n):
     Sortie : mask (objet au premier plan) au format liste de listes de booleens
     '''
 
-    array_r = image[:,:,1]
-    #array_v = image[:,:,1]
-    #array_b = image[:,:,2]
-    #array_moyen = (array_r + array_v )/2
+    array_2d = image[:,:,0] # 0 choisit les intensités de rouge des pixels
 
-    thresholds = filters.threshold_multiotsu(array_r, classes = n)
-    regions = np.digitize(array_r, bins=thresholds)
+    thresholds = filters.threshold_multiotsu(array_2d, classes = n)
+    regions = np.digitize(array_2d, bins=thresholds)
     regions_max = regions.copy()
     regions_max = regions_max == n-1 #on prend le seuil le plus élevé = la partie la plus claire de l'image
                                      #remplacer n-1 par 0 si l'objet est plus foncé que le fond
-    print(regions_max)
-    #regions_colorized = color.label2rgb(regions)
     
     
     return regions_max
@@ -81,48 +76,13 @@ def erosion(mask, k):
     Sortie : même format que mask mais avec erosion et dilatation
     '''
     
+    #On fait une érosion puis une dilatation successive afin d'enlever les petits éléments
+    #puis de boucher les trous dans les objets
     mask_2 = morphology.binary_erosion(mask, morphology.diamond(k)).astype(np.bool)
     mask_2 = morphology.binary_dilation(mask_2, morphology.diamond(k-1)).astype(np.bool)
     
     return mask_2
 
-
-
-def histo_objets(image, coordonnees):
-    '''
-    Entrée : image (N,M,3)
-             coordonnées au format liste d'arrays
-    Sortie : affiche histogramme des intensités de pixels dans l'image
-    '''
-    array_r = image[:,:,0]
-    array_g = image[:,:,1]
-    array_b = image[:,:,2]
-    
-    n = len(coordonnees)
-    fig_hist,ax_hist = plt.subplots(3,n)
-    
-    l_pixel_r = []
-    l_pixel_g = []
-    l_pixel_b = []
-    for k in range(n):
-        for point in coordonnees[k]:
-            l_pixel_r.append(array_r[point[0],point[1]])
-            l_pixel_g.append(array_g[point[0],point[1]])
-            l_pixel_b.append(array_b[point[0],point[1]])
-        histo_r = np.histogram(l_pixel_r, bins = range(257))
-        histo_g = np.histogram(l_pixel_g, bins = range(257))
-        histo_b = np.histogram(l_pixel_b, bins = range(257))
-        
-        try:
-            ax_hist[0][k].plot(histo_r[1][:-1],histo_r[0], color = 'r')
-            ax_hist[1][k].plot(histo_g[1][:-1],histo_g[0], color = 'g')
-            ax_hist[2][k].plot(histo_b[1][:-1],histo_b[0], color = 'b')
-        except TypeError:
-            ax_hist[0].plot(histo_r[1][:-1],histo_r[0], color = 'r')
-            ax_hist[1].plot(histo_g[1][:-1],histo_g[0], color = 'g')
-            ax_hist[2].plot(histo_b[1][:-1],histo_b[0], color = 'b')
-            
-    plt.show()
 
 def test_otsu(image,n):
     '''
@@ -259,9 +219,6 @@ class GUI(tk.Tk):
         
     def plot(self,image,mask,contour_bool,contours):
         self.ax.imshow(mask)
-
-        #self.canvas_1.itemconfig(self.canvas_1, image = image)
-        #self.canvas_2.itemconfig(self.canvas_2, image = mask)
         
         if contour_bool:
             for contour in contours:
@@ -338,12 +295,10 @@ def main(nom_img,seuil,k,n,contour_bool):
     
     if contour_bool:
         #calcul des contours
-        contours = calc_contours(mask_label)        
-        #contour_max = max_array(contours)
-        #contours_filtre = filtre_array(contours, contour_max, seuil)
-    
-    
-    fenetre.plot(image,mask_label,contour_bool,contours)
+        contours = calc_contours(mask_label)   
+        contour_max = max_array(contours)         
+        contours_filtre = filtre_array(contours, contour_max, seuil)
+    fenetre.plot(image,mask_label,contour_bool,contours_filtre)
 
 
 #%% Programme principal
